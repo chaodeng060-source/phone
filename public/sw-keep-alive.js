@@ -295,21 +295,39 @@ self.addEventListener('push', function (event) {
     return;
   }
 
-  // Branch B: legacy ActiveMsg 2.0 push — server already included the
-  // generated message body; save + notify directly.
+  // Branch B: instant push / ActiveMsg 2.0 — server included the generated
+  // message body; save + notify.
+  //
+  // 前台 (有 focused client) 时复用 proactive-wake 的"silent empty + immediate
+  // close"模式：通知不渲染（iOS 锁屏不闪、桌面不弹 toast），但满足"每个 push
+  // 必须 showNotification"配额，订阅不掉权。消息本身由 OSContext 的 in-app
+  // toast + unread badge 兜底。
+  // 不在前台才弹真实通知。
   var title = (payload && payload.contactName) || '新消息';
   var body = String((payload && payload.message) || (payload && payload.body) || '').trim();
-  event.waitUntil(
-    Promise.all([
-      saveIncomingActiveMessage(payload),
-      self.registration.showNotification(title, {
+  event.waitUntil((async function () {
+    var clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    var hasFocused = clients.some(function (c) { return c.focused; });
+    await saveIncomingActiveMessage(payload);
+    if (hasFocused) {
+      var silentTag = 'instant-silent-' + ((payload && payload.messageId) || Date.now());
+      await self.registration.showNotification('', {
+        body: '',
+        silent: true,
+        tag: silentTag,
+        requireInteraction: false,
+      });
+      var ghosts = await self.registration.getNotifications({ tag: silentTag });
+      for (var i = 0; i < ghosts.length; i++) ghosts[i].close();
+    } else {
+      await self.registration.showNotification(title, {
         body: body,
         icon: './icons/icon-192.png',
         badge: './icons/icon-192.png',
         data: { payload: payload },
-      }),
-    ])
-  );
+      });
+    }
+  })());
 });
 
 self.addEventListener('notificationclick', function (event) {
