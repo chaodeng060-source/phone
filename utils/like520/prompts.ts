@@ -23,6 +23,8 @@ export interface Like520Anchor {
     item_label: string;
     /** 一个 emoji 代表这件事，如 "🍰"/"🪮"/"💧"/"🖼️" */
     item_icon: string;
+    /** 点击道具后弹出的居中选项（2-3 个），第二人称"你____"动作描述。例：["你递出一块小蛋糕","你掰了一小块塞过去","你看着 ta 张嘴等着"] */
+    user_action_options: string[];
     /** 场景旁白（第三人称小场景描写，可写 char 的动作/环境） */
     scene: string;
     /** char 的对白行数组。每条 = 一个气泡，按顺序推进。 */
@@ -222,7 +224,7 @@ ta 一直以为是你在照顾 ta。
    - 「你怎么变小了！」（becamesmall） → 你的回应（短，带"？？？你有意见？"的不解感）
    - 「你今天好可爱！」（cute） → 你的回应（短，可能下意识回敬）
    - 「这什么天杀的养成游戏」（yangcheng_meta） → 你的回应（短，可能完全不懂梗）
-4. **锚点剧本**（anchors）：**6-8 个锚点**（**少于 6 个就太短了，让 ${userName} 没玩够**）。**这是养成游戏的核心机制**——
+4. **锚点剧本**（anchors）：**7-10 个锚点**（**少于 7 个就太短了，让 ${userName} 没玩够**）。**这是养成游戏的核心机制**——
 
    **每个锚点 = ${userName} 对你做的一个具体动作 + 你对这个动作的反应**。${userName} 在场景里看到一排小道具图标（食物/梳子/玩具/水杯……），ta 点一个 → 那个 anchor 触发 → 你说话。
 
@@ -289,11 +291,20 @@ ta 一直以为是你在照顾 ta。
 
    - \`item_label\`：${userName} 这次做的动作标签，**4 字以内**。例："投喂"、"梳梳毛"、"递水"、"陪画画"、"看相册"
    - \`item_icon\`：一个 **emoji**。例：🍰 🪮 💧 ✏️ 🖼️ 🎀 🍵 📷
-   - \`scene\`：场景旁白，第三人称小场景描写。一两句，**克制**——可以写你（char）的动作和环境，但**绝对不要写 ${userName} 的反应**（不要写"${userName} 愣住""${userName} 笑了"这种）。
+
+   - \`user_action_options\`：**居中弹窗给 ${userName} 选的 2-3 个第二人称动作选项**。这是 galgame 的选择菜单。
+     - **必须以"你"开头**（不是 user/${userName}/我/ta）。例：「你递出一块小蛋糕」「你掰了一小块塞过去」「你只是看着 ta 张嘴等」
+     - **每条 ≤ 15 字**，简短、具体、画面感强
+     - **写动作，不要代替 ${userName} 说话/想/感受**——不要写"你心想'好可爱'"、"你说'吃吧'"、"你觉得很温暖"这种。写**身体动作、姿态、视线、节奏**。
+     - **3 个选项要写出 ${userName} 的不同心理倾向**（不直说心理，用动作差异体现）：比如一个是"急着想做好"（"你赶紧递过去"），一个是"克制有距离"（"你只是看着 ta 张嘴等"），一个是"小心翼翼"（"你掰了一小块塞过去"）。让 ${userName} 通过选项**认出自己**。
+     - 反例（不要这样）：「你说："吃吧 ta"」（这代替 ${userName} 说话了）/「你心想 ta 真可爱」（代替了心理）/「user 递出蛋糕」（不是第二人称）
+
+   - \`scene\`：场景旁白，第三人称小场景描写。一两句，**克制**——可以写你（char）的动作和环境，但**绝对不要写 ${userName} 的反应**（不要写"${userName} 愣住""${userName} 笑了"这种）。**也不要重复 user_action_options 已经说过的内容**，scene 写的是环境/光/你的反应起点。
    - \`dialogue\`：**对白行数组**。每条数组项 = 一句你说的话 = 一个独立气泡，按顺序推进。
      - **必须是纯对白**，不要在文本里加 \`(捂嘴)\` \`(${userName} 愣住)\` \`(沉默两秒)\` 这种括号舞台指示——那些都交给 UI/分行处理。
      - **每个 anchor 的 dialogue 数组通常 2-4 行**——不要写一大段长台词。短句、停顿、省略号、破折号是你的工具。
      - 至少有一行是"承担母题"的那种重量；其他行可以更生活化做衬，但不要纯客气话。
+     - dialogue 是**对 ${userName} 任一动作选项的统一回应**——${userName} 选哪条都会触发这段对白，所以不要在对白里指认 ${userName} 具体做了哪一种动作。
    - \`is_photo_anchor\`：false。
 
    ---
@@ -302,6 +313,7 @@ ta 一直以为是你在照顾 ta。
 
    - \`item_label\`：类似"看相册"/"翻翻东西"/"打开抽屉"
    - \`item_icon\`：🖼️ / 📷 / 💝 / 📔
+   - \`user_action_options\`：2-3 个"你____"打开/翻找的动作选项。例：「你翻开抽屉最里面那本」「你把相框拿起来」「你不小心碰倒了一摞东西」
    - \`scene\`：${userName} 翻到/打开/递出某个物件——里面是**一张合照，两个小小的并肩**。**scene 旁白必须明确写出"两个小小的"或"两个一样高的"那种描述**，否则 ${userName} 可能看不出来这张合照上 ta 也是小的。
    - \`dialogue\`：含一句类似"……啊那个啊"/"我一直放在这里的"，**不解释，自然过去**。可以再加一句生活化的话作为收尾（比如"……你看到啦"），但不要长篇大论。
 
@@ -482,15 +494,17 @@ ${recentMsgs}
     {
       "item_label": "投喂",
       "item_icon": "🍰",
-      "scene": "场景旁白一两句，写 char 的动作/环境，不写 user 的反应",
+      "user_action_options": ["你递出一块小蛋糕", "你掰了一小块塞过去", "你看 ta 张嘴等着"],
+      "scene": "场景旁白一两句，写 char 的反应起点/环境，不写 user 的反应，也不重复 user_action 已说过的",
       "dialogue": ["第一句对白", "第二句对白", "第三句（捂嘴节奏靠分行）"],
       "is_photo_anchor": false
     },
-    "... 共 6-8 个 anchor，最后一个必须 is_photo_anchor=true ...",
+    "... 共 7-10 个 anchor，最后一个必须 is_photo_anchor=true ...",
     {
       "item_label": "看相册",
       "item_icon": "🖼️",
-      "scene": "${userName} 翻到/打开/递出物件——里面是两个小小的，你们并肩",
+      "user_action_options": ["你翻开抽屉最里面那本", "你把相框拿起来", "你不小心碰倒一摞东西"],
+      "scene": "${userName} 翻到的物件——里面是一张合照，两个小小的并肩",
       "dialogue": ["……啊那个啊。", "我一直放在这里的。"],
       "is_photo_anchor": true
     }
@@ -713,6 +727,13 @@ function validateCallA(parsed: any): parsed is Like520CallAResult {
         const dlg = toLines(a.dialogue);
         if (!dlg) return false;
         a.dialogue = dlg;
+        // user_action_options：宽容化 - 缺失或不合法时给一个 fallback（避免硬挂）
+        const opts = toLines(a.user_action_options);
+        if (!opts || opts.length < 2) {
+            a.user_action_options = [`你${a.item_label}`, `你慢慢${a.item_label}`];
+        } else {
+            a.user_action_options = opts.slice(0, 3);
+        }
     }
     const last = parsed.anchors[parsed.anchors.length - 1];
     if (!last.is_photo_anchor) return false;

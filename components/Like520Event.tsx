@@ -188,6 +188,46 @@ const DialogueBox: React.FC<{
 );
 
 // ============================================================
+// ChoiceOverlay — 居中浮层选项（galgame 选择菜单）
+// 不框在对话框里，覆盖在场景中央
+// ============================================================
+
+interface ChoiceOverlayProps {
+    prompt?: string;
+    options: { key: string; label: string }[];
+    onPick: (key: string) => void;
+}
+
+const ChoiceOverlay: React.FC<ChoiceOverlayProps> = ({ prompt, options, onPick }) => (
+    <div className="absolute inset-0 z-[40] flex flex-col items-center justify-center px-6 animate-fade-in pointer-events-none">
+        <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px] pointer-events-auto" />
+        <div className="relative w-full max-w-[18rem] flex flex-col items-center gap-3 pointer-events-auto">
+            {prompt && (
+                <div className="text-white text-xs tracking-[6px] mb-1 drop-shadow-lg">{prompt}</div>
+            )}
+            {options.map((opt, i) => (
+                <button
+                    key={opt.key}
+                    onClick={() => onPick(opt.key)}
+                    className="w-full px-5 py-3 rounded-2xl bg-white/95 text-[#5C3A4A] text-[14px] font-medium shadow-xl active:scale-95 active:bg-[#FFE4D5] transition-all border-2 border-white"
+                    style={{
+                        animation: `fadeSlideIn 0.3s ease ${i * 80}ms backwards`,
+                    }}
+                >
+                    {opt.label}
+                </button>
+            ))}
+        </div>
+        <style>{`
+            @keyframes fadeSlideIn {
+                from { opacity: 0; transform: translateY(8px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `}</style>
+    </div>
+);
+
+// ============================================================
 // Y520Scene — 持久化养成场景容器
 // 覆盖 opening → 吐槽选择 → 吐槽回应 → free（锚点+抚摸）→ reveal_transition → 自我意识
 // ============================================================
@@ -197,7 +237,8 @@ type Y520Stage =
     | 'tucao_choose'
     | 'tucao_reply'
     | 'free'
-    | 'anchor_playing'
+    | 'anchor_action_choose'   // 道具点击后弹居中选项
+    | 'anchor_playing'         // 选完动作后 char 回应
     | 'touch_playing'
     | 'reveal'
     | 'self_reveal_hint';
@@ -258,6 +299,7 @@ const Y520Scene: React.FC<Y520SceneProps> = ({ callA, charName, charAvatar, char
                 setUsedAnchors(prev => new Set(prev).add(activeAnchorIdx));
             }
             setActiveAnchorIdx(null);
+            setChosenUserAction(null);
             setStage('free');
             setQueue([]);
             setLineIdx(0);
@@ -282,10 +324,19 @@ const Y520Scene: React.FC<Y520SceneProps> = ({ callA, charName, charAvatar, char
         setStage('tucao_reply');
     };
 
+    const [chosenUserAction, setChosenUserAction] = useState<string | null>(null);
+
     const startAnchor = (idx: number) => {
         if (stage !== 'free' || usedAnchors.has(idx)) return;
         setActiveAnchorIdx(idx);
-        setQueue(callA.anchors[idx].dialogue);
+        setChosenUserAction(null);
+        setStage('anchor_action_choose');
+    };
+
+    const pickUserAction = (action: string) => {
+        if (stage !== 'anchor_action_choose' || activeAnchorIdx === null) return;
+        setChosenUserAction(action);
+        setQueue(callA.anchors[activeAnchorIdx].dialogue);
         setLineIdx(0);
         setStage('anchor_playing');
     };
@@ -299,7 +350,9 @@ const Y520Scene: React.FC<Y520SceneProps> = ({ callA, charName, charAvatar, char
         setTouchIdx(i => i + 1);
     };
 
-    const activeScene = stage === 'anchor_playing' && activeAnchorIdx !== null ? callA.anchors[activeAnchorIdx].scene : null;
+    // 当锚点回应播完，scene 旁白也要清掉
+    const activeAnchor = activeAnchorIdx !== null ? callA.anchors[activeAnchorIdx] : null;
+    const showSceneNarration = stage === 'anchor_playing' && activeAnchor;
     const nameTag = stage === 'self_reveal_hint' ? '——' : charName;
     const itemsCols = callA.anchors.length > 6 ? 'grid-cols-4' : 'grid-cols-3';
 
@@ -366,9 +419,11 @@ const Y520Scene: React.FC<Y520SceneProps> = ({ callA, charName, charAvatar, char
                 >
                     <img src={charChibiUrl} alt="chibi" className="max-h-full max-w-[70%] object-contain drop-shadow-md" />
                 </button>
-                {activeScene && (
-                    <div className="absolute top-1 left-0 right-0 text-center text-[11px] italic text-[#9D7585] px-4 animate-fade-in">
-                        {activeScene}
+                {showSceneNarration && chosenUserAction && (
+                    <div className="absolute top-1 left-0 right-0 px-4 animate-fade-in pointer-events-none">
+                        <div className="text-center text-[12px] italic text-[#5C3A4A] bg-white/70 backdrop-blur rounded-full px-4 py-1.5 inline-block mx-auto shadow">
+                            （{chosenUserAction}）
+                        </div>
                     </div>
                 )}
             </div>
@@ -377,34 +432,42 @@ const Y520Scene: React.FC<Y520SceneProps> = ({ callA, charName, charAvatar, char
             <div className="px-3 pb-[calc(3vh+12px)] pt-2 shrink-0 relative z-10">
                 <DialogueBox
                     charName={nameTag}
-                    onAdvance={stage === 'tucao_choose' ? undefined : (queue.length > 0 ? advance : undefined)}
-                    showArrow={!!(queue.length > 0 && stage !== 'tucao_choose')}
+                    onAdvance={stage === 'tucao_choose' || stage === 'anchor_action_choose' ? undefined : (queue.length > 0 ? advance : undefined)}
+                    showArrow={!!(queue.length > 0 && stage !== 'tucao_choose' && stage !== 'anchor_action_choose')}
                     arrowGlyph={stage === 'self_reveal_hint' && !hasMoreLines ? '→' : '▽'}
                 >
-                    {stage === 'tucao_choose' ? (
-                        <div className="pt-2 space-y-2">
-                            <div className="text-[10px] tracking-widest text-[#C76182] mb-1.5">你的反应是——</div>
-                            {TUCAO_OPTIONS.map(opt => (
-                                <button
-                                    key={opt.key}
-                                    onClick={(e) => { e.stopPropagation(); pickTucao(opt.key); }}
-                                    className="w-full px-4 py-2 rounded-xl bg-[#FFF1E6] border border-[#FCEDD9] text-[#5C3A4A] text-[13px] text-left active:scale-95 active:bg-[#FFE4D5] transition-all"
-                                >
-                                    「{opt.label}」
-                                </button>
-                            ))}
-                        </div>
-                    ) : currentLine ? (
+                    {currentLine ? (
                         <div key={`${stage}-${lineIdx}`} className="text-[#5C3A4A] text-[14px] leading-[1.85] pt-2 whitespace-pre-wrap animate-fade-in">
                             {currentLine}
                         </div>
                     ) : (
                         <div className="text-[#9D7585]/70 text-[12px] italic pt-2">
-                            （{stage === 'free' && !allAnchorsUsed ? `摸摸 ${charName}，或者从架子上拿一样` : '……'}）
+                            （{
+                                stage === 'tucao_choose' ? '你的反应是——'
+                                : stage === 'anchor_action_choose' ? '你要做什么呢——'
+                                : stage === 'free' && !allAnchorsUsed ? `摸摸 ${charName}，或者从架子上拿一样`
+                                : '……'
+                            }）
                         </div>
                     )}
                 </DialogueBox>
             </div>
+
+            {/* 居中浮层选项 */}
+            {stage === 'tucao_choose' && (
+                <ChoiceOverlay
+                    prompt="你 的 反 应"
+                    options={TUCAO_OPTIONS.map(o => ({ key: o.key, label: `「${o.label}」` }))}
+                    onPick={(k) => pickTucao(k as Like520TucaoKey)}
+                />
+            )}
+            {stage === 'anchor_action_choose' && activeAnchor && (
+                <ChoiceOverlay
+                    prompt={`你 要 ${activeAnchor.item_label}`}
+                    options={activeAnchor.user_action_options.map((label, i) => ({ key: String(i), label }))}
+                    onPick={(k) => pickUserAction(activeAnchor.user_action_options[Number(k)])}
+                />
+            )}
         </div>
     );
 };
