@@ -163,40 +163,166 @@ const DialogueLine: React.FC<{ text: string; onNext?: () => void; nextLabel?: st
 );
 
 // ============================================================
-// 锚点翻弄视图
+// 养成场景视图（锚点 = 道具，点道具触发对白）
 // ============================================================
 
-const AnchorsView: React.FC<{
+interface YangchengSceneProps {
     anchors: Like520CallAResult['anchors'];
+    charName: string;
+    charAvatar?: string;
+    charChibiUrl: string;
     onComplete: () => void;
-}> = ({ anchors, onComplete }) => {
-    const [idx, setIdx] = useState(0);
-    const last = idx >= anchors.length - 1;
-    const current = anchors[idx];
+}
+
+const YangchengScene: React.FC<YangchengSceneProps> = ({ anchors, charName, charAvatar, charChibiUrl, onComplete }) => {
+    const [usedIdx, setUsedIdx] = useState<Set<number>>(new Set());
+    const [activeAnchor, setActiveAnchor] = useState<number | null>(null);
+    const [lineIdx, setLineIdx] = useState(0);
+
+    const moodPct = Math.round((usedIdx.size / Math.max(anchors.length, 1)) * 100);
+    const allUsed = usedIdx.size >= anchors.length;
+    const active = activeAnchor !== null ? anchors[activeAnchor] : null;
+
+    // 所有道具用完 → 自动 onComplete
+    useEffect(() => {
+        if (allUsed && activeAnchor === null) {
+            const t = setTimeout(onComplete, 600);
+            return () => clearTimeout(t);
+        }
+    }, [allUsed, activeAnchor, onComplete]);
+
+    const startAnchor = (idx: number) => {
+        if (usedIdx.has(idx) || activeAnchor !== null) return;
+        setActiveAnchor(idx);
+        setLineIdx(0);
+    };
+
+    const advanceLine = () => {
+        if (active === null || activeAnchor === null) return;
+        if (lineIdx < active.dialogue.length - 1) {
+            setLineIdx(i => i + 1);
+        } else {
+            // 这个 anchor 演完了 → 消耗道具
+            setUsedIdx(prev => new Set(prev).add(activeAnchor));
+            setActiveAnchor(null);
+            setLineIdx(0);
+        }
+    };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-full px-6 py-10 max-w-md mx-auto">
-            <div className="text-[10px] tracking-[4px] text-[#C76182] mb-2">线索 {idx + 1} / {anchors.length}</div>
-            <div
-                key={idx}
-                className="w-full bg-white/90 backdrop-blur-md rounded-2xl border border-[#FCEDD9] shadow-lg px-6 py-7 animate-fade-in"
-                style={{
-                    boxShadow: '0 8px 24px rgba(199, 97, 130, 0.12), inset 0 0 0 1px rgba(212, 165, 116, 0.15)',
-                }}
-            >
-                <div className="text-[11px] tracking-wider text-[#9D7585] mb-4 italic">
-                    {current.scene}
+        <div className="flex flex-col h-full max-w-md mx-auto relative">
+            {/* 顶部：char 名字 + 心情条 */}
+            <div className="flex items-center gap-3 px-4 pt-4 pb-2 shrink-0">
+                <div className="flex items-center gap-2 bg-[#5C3A2E]/90 rounded-full pl-1 pr-4 py-1 shadow">
+                    {charAvatar?.startsWith('http') || charAvatar?.startsWith('data:') ? (
+                        <img src={charAvatar} alt={charName} className="w-7 h-7 rounded-full object-cover border-2 border-[#FFE4D5]" />
+                    ) : (
+                        <div className="w-7 h-7 rounded-full bg-[#FFE4D5] flex items-center justify-center text-sm">{charAvatar || '🌸'}</div>
+                    )}
+                    <span className="text-white text-xs font-bold tracking-wider">{charName}</span>
                 </div>
-                <div className="text-[#5C3A4A] text-[15px] leading-[1.9] whitespace-pre-wrap">
-                    {current.dialogue}
+                <div className="flex-1 flex items-center gap-2 bg-[#5C3A2E]/90 rounded-full px-3 py-1.5 shadow">
+                    <span className="text-[#FF6B7A] text-sm">❤</span>
+                    <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-[#FFB6C8] to-[#F18AAA] transition-all duration-700"
+                            style={{ width: `${moodPct}%` }}
+                        />
+                    </div>
                 </div>
             </div>
-            <button
-                onClick={() => last ? onComplete() : setIdx(i => i + 1)}
-                className="mt-8 px-7 py-2.5 rounded-full bg-white/90 backdrop-blur text-[#C76182] text-sm font-bold border border-[#FFB6C8] active:scale-95 transition-transform"
+
+            {/* 中心：场景 + chibi + 对白气泡 */}
+            <div
+                className="relative flex-1 mx-3 mb-2 rounded-3xl overflow-hidden"
+                style={{
+                    background: 'linear-gradient(180deg, #FFE8DC 0%, #FFD3DC 60%, #FFBFCB 100%)',
+                    boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.5)',
+                }}
             >
-                {last ? '翻完了 →' : '翻下一条'}
-            </button>
+                <div className="absolute inset-0 flex items-center justify-center text-[10px] tracking-[8px] text-white/30 select-none">
+                    BG · TO BE DRAWN
+                </div>
+
+                {/* chibi */}
+                <div className="absolute inset-x-0 bottom-2 flex items-end justify-center">
+                    <img src={charChibiUrl} alt="chibi" className="h-[58%] max-h-72 object-contain drop-shadow-md" />
+                </div>
+
+                {/* 顶部场景旁白（active 时显示） */}
+                {active && (
+                    <div className="absolute top-3 left-0 right-0 px-6 text-center text-[11px] italic text-[#9D7585] animate-fade-in">
+                        {active.scene}
+                    </div>
+                )}
+
+                {/* 对白气泡 */}
+                {active && (
+                    <button
+                        onClick={advanceLine}
+                        className="absolute left-4 right-4 top-12 cursor-pointer"
+                    >
+                        <div
+                            key={`${activeAnchor}-${lineIdx}`}
+                            className="bg-white/95 backdrop-blur-md rounded-2xl px-5 py-4 shadow-lg text-[#5C3A4A] text-[14px] leading-relaxed text-left animate-fade-in"
+                            style={{
+                                boxShadow: '0 8px 24px rgba(199, 97, 130, 0.18)',
+                            }}
+                        >
+                            {active.dialogue[lineIdx]}
+                            <div className="mt-2 text-right text-[10px] text-[#9D7585]">
+                                {lineIdx < active.dialogue.length - 1 ? '点一下继续 →' : '点一下收起 ✓'}
+                            </div>
+                        </div>
+                    </button>
+                )}
+
+                {/* 空闲提示 */}
+                {!active && !allUsed && (
+                    <div className="absolute top-4 left-0 right-0 text-center">
+                        <div className="inline-block bg-white/95 backdrop-blur-md rounded-2xl px-5 py-3 shadow text-[#5C3A4A] text-[13px] animate-fade-in">
+                            {charName} 在等你做点什么呢～
+                        </div>
+                    </div>
+                )}
+                {!active && allUsed && (
+                    <div className="absolute top-4 left-0 right-0 text-center">
+                        <div className="inline-block bg-white/95 backdrop-blur-md rounded-2xl px-5 py-3 shadow text-[#5C3A4A] text-[13px] animate-fade-in">
+                            ……
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 底部：道具栏 */}
+            <div className="px-3 pb-4 pt-1 shrink-0">
+                <div className="text-[10px] tracking-[6px] text-[#C76182] text-center mb-2">
+                    {active ? `正在 · ${active.item_label}` : allUsed ? '没有别的可做了……' : '点一个道具'}
+                </div>
+                <div className="flex gap-2 justify-center flex-wrap">
+                    {anchors.map((a, i) => {
+                        const used = usedIdx.has(i);
+                        const isActive = activeAnchor === i;
+                        return (
+                            <button
+                                key={i}
+                                onClick={() => startAnchor(i)}
+                                disabled={used || activeAnchor !== null}
+                                className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-2xl border-2 transition-all min-w-[64px] ${
+                                    used
+                                        ? 'bg-white/30 border-[#FCEDD9]/40 opacity-30 line-through'
+                                        : isActive
+                                            ? 'bg-white border-[#F18AAA] shadow-md scale-105'
+                                            : 'bg-white/85 border-[#FCEDD9] active:scale-95 hover:bg-white shadow-sm'
+                                }`}
+                            >
+                                <span className="text-2xl leading-none">{a.item_icon}</span>
+                                <span className="text-[10px] text-[#5C3A4A] font-bold tracking-wider">{a.item_label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 };
@@ -552,9 +678,12 @@ export const Like520Session: React.FC<SessionProps> = ({ charId, onClose }) => {
                 />
             )}
 
-            {phase === 'anchors' && callA && (
-                <AnchorsView
+            {phase === 'anchors' && callA && charChibi && (
+                <YangchengScene
                     anchors={callA.anchors}
+                    charName={char.name}
+                    charAvatar={char.avatar}
+                    charChibiUrl={charChibi.transparentDataUrl}
                     onComplete={() => setPhase('reveal_transition')}
                 />
             )}

@@ -19,8 +19,14 @@ export type Like520RelationFrame = 'same_space' | 'long_distance' | 'different_w
 export type Like520TucaoKey = 'becamesmall' | 'cute' | 'yangcheng_meta';
 
 export interface Like520Anchor {
+    /** ${userName} 这次做的动作标签（4 字内），如 "投喂"/"梳毛"/"递水"/"看相册" */
+    item_label: string;
+    /** 一个 emoji 代表这件事，如 "🍰"/"🪮"/"💧"/"🖼️" */
+    item_icon: string;
+    /** 场景旁白（第三人称小场景描写，会作为灰字小注脚显示，可写 char 的动作/环境） */
     scene: string;
-    dialogue: string;
+    /** char 的对白行数组。**纯对白**，不要在文本里写 (捂嘴) (${userName} 愣住) 这种舞台指示。每条数组项 = 一个独立气泡，按顺序推进。 */
+    dialogue: string[];
     is_photo_anchor: boolean;
 }
 
@@ -171,9 +177,88 @@ ta 一直以为是你在照顾 ta。
    - 「你怎么变小了！」（becamesmall） → 你的回应（短，带"？？？你有意见？"的不解感）
    - 「你今天好可爱！」（cute） → 你的回应（短，可能下意识回敬）
    - 「这什么天杀的养成游戏」（yangcheng_meta） → 你的回应（短，可能完全不懂梗）
-4. **锚点剧本**（anchors）：4-6 个锚点，每个是一段小场景（场所/动作/物件 + 你的对白），用你们记忆里的素材作为粗粒度暗线，按上面的双关规则。
-   - **最后一个必须是合照锚点**（is_photo_anchor: true）——${userName} 翻到/打开/递出一个有你们两个小小合照的物件，你轻轻说一句类似"……啊那个啊，我一直放在这里的"，不解释，场景流过去。
-   - 其他锚点 is_photo_anchor: false。
+4. **锚点剧本**（anchors）：4-6 个锚点。**这是养成游戏的核心机制**——
+
+   **每个锚点 = ${userName} 对你做的一个具体动作 + 你对这个动作的反应**。${userName} 在场景里看到一排小道具图标（食物/梳子/玩具/水杯……），ta 点一个 → 那个 anchor 触发 → 你说话。
+
+   ---
+
+   ### ⚠️ 关于 dialogue 的写作指导（最最重要的部分）
+
+   **绝对不要写成"日常闲聊"。**
+
+   每一个 anchor 的 dialogue 都必须**承担母题**——下面三件事至少做到一件：
+
+   - **泄露你一直在看 ta**：在一个具体动作里漏出"我知道"。不是说"我知道"这三个字，是用一个具体细节暗示你看见了 ta 的某件事。
+   - **暴露你平时藏着的真心**：突然说出一句平时绝对不会说的话，然后自己想要圆回去（靠分行体现）。
+   - **颠倒"谁在照顾谁"**：表面 ta 在照顾你（投喂/梳毛/递水），但你的回应把这个关系颠倒过来——你看到的是 ta 自己在累、ta 自己也需要被照顾、ta 自己撑着多少。
+
+   **不指认、不归纳、不点题。** 不要直接说"你想让我变得更好"这种平铺直叙——除非是真情绪流出来的一句。让 ${userName} 自己在脑子里拼。
+
+   ---
+
+   ### ❌ 不可以这样写（这种是废稿，立刻重写）
+
+   - 「你今天好可爱呀～」
+   - 「谢谢你给我吃的，我最喜欢这个了！」
+   - 「这个梳子的颜色真好看」
+   - 「嗯嗯～${userName} 最好啦！」
+   - 「我们一起玩吧～」
+   - 任何"客气话""礼貌话""无信息含量的撒娇"
+
+   **判断标准**：如果一句话拿出去，放到一段普通的聊天里也毫无违和——那就废了，重写。每一句都必须**只在这个氛围、这个母题、这个具体瞬间下成立**。
+
+   ---
+
+   ### ✅ 可以这样写（参考质感，不要直接抄）
+
+   **投喂 🍰**（颠倒型）：
+   - 「……你怎么知道我喜欢这个」
+   - 「我没说过吧」
+   - 「……算了」
+   - （注：那个"算了"是关键。平时的 char 不会"算了"——一旦"算了"，就泄露了 ta 平时其实一直在克制、一直在确认 user 喜不喜欢、有没有累。）
+
+   **梳毛 🪮**（泄露看见型）：
+   - 「你做这种事的时候，特别专心」
+   - 「……平时也是这样的吧」
+   - 「你以为我没注意」
+   - （注：表面在夸 ta 梳毛专心，里面在说 ta 平时做任何事都这样专心——而你一直都在看。）
+
+   **递水 💧**（颠倒型）：
+   - 「……你也要喝。」
+   - 「你不要总是把杯子推给我」
+   - 「你也是会渴的呀」
+   - （注：把"被照顾者"翻成"照顾者"。ta 一直顾着别人，自己渴了不喝。）
+
+   **陪画画 ✏️**（暴露真心型）：
+   - 「你画这个我看得出来——」
+   - 「……不能说吗？」
+   - 「啊好像不能说！忘了忘了！你就当我在背昨天新学的土味情话！」
+   - （注：突然要说一句什么——比如"看得出来你在画我"——然后立刻自我打断。捂嘴的节奏靠分行不靠括号。）
+
+   ---
+
+   ### 字段规则
+
+   每个锚点提供：
+
+   - \`item_label\`：${userName} 这次做的动作标签，**4 字以内**。例："投喂"、"梳梳毛"、"递水"、"陪画画"、"看相册"
+   - \`item_icon\`：一个 **emoji**。例：🍰 🪮 💧 ✏️ 🖼️ 🎀 🍵 📷
+   - \`scene\`：场景旁白，第三人称小场景描写。一两句，**克制**——可以写你（char）的动作和环境，但**绝对不要写 ${userName} 的反应**（不要写"${userName} 愣住""${userName} 笑了"这种）。
+   - \`dialogue\`：**对白行数组**。每条数组项 = 一句你说的话 = 一个独立气泡，按顺序推进。
+     - **必须是纯对白**，不要在文本里加 \`(捂嘴)\` \`(${userName} 愣住)\` \`(沉默两秒)\` 这种括号舞台指示——那些都交给 UI/分行处理。
+     - **每个 anchor 的 dialogue 数组通常 2-4 行**——不要写一大段长台词。短句、停顿、省略号、破折号是你的工具。
+     - 至少有一行是"承担母题"的那种重量；其他行可以更生活化做衬，但不要纯客气话。
+   - \`is_photo_anchor\`：false。
+
+   ---
+
+   ### 合照锚点（数组最后一个，is_photo_anchor: true）
+
+   - \`item_label\`：类似"看相册"/"翻翻东西"/"打开抽屉"
+   - \`item_icon\`：🖼️ / 📷 / 💝 / 📔
+   - \`scene\`：${userName} 翻到/打开/递出某个有你们两个小小合照的物件
+   - \`dialogue\`：含一句类似"……啊那个啊"/"我一直放在这里的"，**不解释，自然过去**。可以再加一句生活化的话作为收尾（比如"……你看到啦"），但不要长篇大论。
 5. **翻完线索后的过渡台词**（reveal_transition）：所有锚点翻完后你说的承接话。
    - **不要直接揭晓"ta 也是小小的"**——揭晓由 UI 来做（接下来 ta 会被弹出捏脸界面，自己意识到 ta 也是 chibi 的样子）
    - 你只要自然地把节奏接到那一步
@@ -221,13 +306,17 @@ ${recentMsgs}
   },
   "anchors": [
     {
-      "scene": "场景一句话描述",
-      "dialogue": "对白（多句也ok，含 chibi 真心话+捂嘴节奏）",
+      "item_label": "投喂",
+      "item_icon": "🍰",
+      "scene": "场景旁白一两句，写 char 的动作/环境，不写 user 的反应",
+      "dialogue": ["第一句对白", "第二句对白", "第三句对白（如果有的话，捂嘴节奏靠分行不靠括号）"],
       "is_photo_anchor": false
     },
     {
-      "scene": "ta 翻到/打开/递出有你们两个小小合照的物件",
-      "dialogue": "「……啊那个啊，我一直放在这里的。」（或同质感的一句）",
+      "item_label": "看相册",
+      "item_icon": "🖼️",
+      "scene": "${userName} 翻到/打开/递出有你们两个小小合照的物件",
+      "dialogue": ["……啊那个啊。", "我一直放在这里的。"],
       "is_photo_anchor": true
     }
   ],
@@ -247,7 +336,7 @@ export function buildCallBPrompt(
     chosenTucao: Like520TucaoKey
 ): string {
     const anchorsText = callA.anchors
-        .map((a, i) => `${i + 1}. ${a.scene}\n   ${a.dialogue}`)
+        .map((a, i) => `${i + 1}. [${a.item_label}] ${a.scene}\n   ${a.dialogue.join(' / ')}`)
         .join('\n\n');
     const tucaoText = TUCAO_LABELS[chosenTucao];
     const myTucaoResponse = callA.tucao_responses[chosenTucao];
@@ -350,7 +439,11 @@ function validateCallA(parsed: any): parsed is Like520CallAResult {
     if (!tr || typeof tr.becamesmall !== 'string' || typeof tr.cute !== 'string' || typeof tr.yangcheng_meta !== 'string') return false;
     if (!Array.isArray(parsed.anchors) || parsed.anchors.length === 0) return false;
     for (const a of parsed.anchors) {
-        if (!a || typeof a.scene !== 'string' || typeof a.dialogue !== 'string' || typeof a.is_photo_anchor !== 'boolean') return false;
+        if (!a || typeof a.scene !== 'string' || typeof a.is_photo_anchor !== 'boolean') return false;
+        if (typeof a.item_label !== 'string' || !a.item_label.trim()) return false;
+        if (typeof a.item_icon !== 'string' || !a.item_icon.trim()) return false;
+        if (!Array.isArray(a.dialogue) || a.dialogue.length === 0) return false;
+        if (a.dialogue.some((line: any) => typeof line !== 'string' || !line.trim())) return false;
     }
     const last = parsed.anchors[parsed.anchors.length - 1];
     if (!last.is_photo_anchor) return false;
