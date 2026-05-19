@@ -1187,17 +1187,6 @@ const WishPaperOverlay: React.FC<{
                 }
                 .l520-wish-scroll::-webkit-scrollbar { width: 4px; }
                 .l520-wish-scroll::-webkit-scrollbar-thumb { background: rgba(184,146,63,0.35); border-radius: 2px; }
-                /* 折痕 */
-                .l520-wish-paper::before, .l520-wish-paper::after {
-                    content: '';
-                    position: absolute;
-                    left: 0; right: 0;
-                    height: 1px;
-                    background: linear-gradient(90deg, transparent, rgba(122,46,58,0.18) 20%, rgba(122,46,58,0.22) 50%, rgba(122,46,58,0.18) 80%, transparent);
-                    pointer-events: none;
-                }
-                .l520-wish-paper::before { top: 33%; box-shadow: 0 -4px 8px -2px rgba(0,0,0,0.05); }
-                .l520-wish-paper::after  { top: 66%; box-shadow: 0 -4px 8px -2px rgba(0,0,0,0.05); }
                 /* 四角小金线装饰 */
                 .l520-wish-paper .corner {
                     position: absolute;
@@ -1377,6 +1366,88 @@ const EyesOpeningOverlay: React.FC<{ onDone: () => void }> = ({ onDone }) => {
                 <div style={{ fontSize: 10, letterSpacing: 10, marginBottom: 6 }}>—— 慢慢 ——</div>
                 <div>睁&nbsp;开&nbsp;眼&nbsp;睛</div>
                 <div style={{ fontSize: 10, letterSpacing: 4, marginTop: 12, opacity: 0.6 }}>（点击跳过）</div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================================
+// 慢慢闭上眼 —— 回到现实（DoneView 退场前用）
+// ============================================================
+
+const EyesClosingOverlay: React.FC<{ onDone: () => void }> = ({ onDone }) => {
+    // 0: 透明 — 让 DoneView 还看得见
+    // 1: 朦胧光晕渐起、眼睑开始合拢
+    // 2: 眼睑几乎合上
+    // 3: 全黑 → onDone
+    const [phase, setPhase] = useState<0 | 1 | 2 | 3>(0);
+    useEffect(() => {
+        const t1 = setTimeout(() => setPhase(1), 80);
+        const t2 = setTimeout(() => setPhase(2), 1300);
+        const t3 = setTimeout(() => setPhase(3), 2400);
+        const t4 = setTimeout(() => onDone(), 3200);
+        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    }, [onDone]);
+
+    return (
+        <div
+            style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'auto',
+                background: phase >= 3 ? '#000' : 'transparent',
+                transition: 'background 0.7s ease-in',
+            }}
+        >
+            {/* 上下睑慢慢往中间合拢 */}
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0,
+                background: '#000',
+                height: phase === 0 ? '0%' : phase === 1 ? '28%' : phase === 2 ? '46%' : '50%',
+                transition: 'height 1.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: phase >= 1 ? '0 6px 24px rgba(0,0,0,0.6)' : 'none',
+            }} />
+            <div style={{
+                position: 'absolute',
+                bottom: 0, left: 0, right: 0,
+                background: '#000',
+                height: phase === 0 ? '0%' : phase === 1 ? '28%' : phase === 2 ? '46%' : '50%',
+                transition: 'height 1.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: phase >= 1 ? '0 -6px 24px rgba(0,0,0,0.6)' : 'none',
+            }} />
+
+            {/* 中间过渡光晕：从粉色 → 渐弱 */}
+            <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'radial-gradient(ellipse at center, rgba(255,228,236,0.35) 0%, rgba(255,182,200,0.12) 30%, transparent 65%)',
+                opacity: phase === 1 ? 1 : phase === 2 ? 0.4 : 0,
+                transition: 'opacity 1.0s ease-out',
+                filter: 'blur(8px)',
+                pointerEvents: 'none',
+            }} />
+
+            {/* 闭眼提示文字 */}
+            <div style={{
+                color: 'rgba(255,228,236,0.7)',
+                fontFamily: "'Cormorant Garamond', serif",
+                fontStyle: 'italic',
+                fontSize: 13,
+                letterSpacing: 6,
+                opacity: phase === 1 || phase === 2 ? 1 : 0,
+                transition: 'opacity 0.7s ease-in-out',
+                textAlign: 'center',
+                lineHeight: 2,
+                pointerEvents: 'none',
+            }}>
+                <div style={{ fontSize: 10, letterSpacing: 10, marginBottom: 6 }}>—— 慢慢 ——</div>
+                <div>闭&nbsp;上&nbsp;眼&nbsp;睛</div>
+                <div style={{ fontSize: 9, letterSpacing: 4, marginTop: 14, opacity: 0.55 }}>see you ~</div>
             </div>
         </div>
     );
@@ -2018,7 +2089,7 @@ const UncoveredLineView: React.FC<{
                             maxWidth: '42%',
                             objectFit: 'contain',
                             objectPosition: 'bottom',
-                            filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 3px rgba(255,255,255,0.85)) drop-shadow(0 12px 18px rgba(122,46,58,0.3))',
+                            filter: 'drop-shadow(0 12px 18px rgba(122,46,58,0.3))',
                         }}
                     />
                     <img
@@ -2029,7 +2100,7 @@ const UncoveredLineView: React.FC<{
                             maxWidth: '42%',
                             objectFit: 'contain',
                             objectPosition: 'bottom',
-                            filter: 'drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 3px rgba(255,255,255,0.85)) drop-shadow(0 12px 18px rgba(122,46,58,0.3))',
+                            filter: 'drop-shadow(0 12px 18px rgba(122,46,58,0.3))',
                             animation: 'l520-userwaddle 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
                             transformOrigin: 'bottom center',
                         }}
@@ -2412,10 +2483,16 @@ const DoneView: React.FC<{
     onClose: () => void;
 }> = ({ charName, charAvatar, userName, charChibi, userChibi, onClose }) => {
     const [heartsKey] = useState(() => Date.now());
+    const [closing, setClosing] = useState(false);
+    const handleSlowExit = () => {
+        if (closing) return;
+        setClosing(true);
+    };
     return (
         <div className="absolute inset-0 overflow-hidden" style={{
             background: 'radial-gradient(ellipse at 50% 30%, #FFE8EF 0%, #FFD7E1 45%, #F5B8C9 100%)',
         }}>
+            {closing && <EyesClosingOverlay onDone={onClose} />}
             {/* 漂浮的爱心粒子 */}
             <style>{`
                 @keyframes l520-done-float {
@@ -2531,7 +2608,8 @@ const DoneView: React.FC<{
                 </div>
 
                 <button
-                    onClick={onClose}
+                    onClick={handleSlowExit}
+                    disabled={closing}
                     style={{
                         padding: '12px 38px',
                         borderRadius: 9999,
